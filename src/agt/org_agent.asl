@@ -5,6 +5,12 @@ org_name("lab_monitoring_org"). // the agent beliefs that it can manage organiza
 group_name("monitoring_team"). // the agent beliefs that it can manage groups with the id "monitoring_team"
 sch_name("monitoring_scheme"). // the agent beliefs that it can manage schemes with the id "monitoring_scheme"
 
+// Task 2.2.1: Infer if there are enough players for a role
+enough_players(R) :-
+  role_cardinality(R,Min,Max) &
+  .count(play(_,R,_),NP) &
+  NP >= Min.
+
 /* Initial goals */
 !start. // the agent has the goal to start
 
@@ -50,9 +56,12 @@ sch_name("monitoring_scheme"). // the agent beliefs that it can manage schemes w
  * the agent waits until the belief is added in the belief base
 */
 @test_formation_status_is_ok_plan
-+?formationStatus(ok)[artifact_id(G)] : group(GroupName,_,G)[artifact_id(OrgName)] <-
++?formationStatus(ok)[artifact_id(GroupArtId)] : group(GroupName,_,GroupArtId)[artifact_id(OrgName)] <-
   .print("Waiting for group ", GroupName," to become well-formed");
-  .wait({+formationStatus(ok)[artifact_id(G)]}). // waits until the belief is added in the belief base
+  // Task 2.2.1: Every 15 seconds the agent infers whether there exist any roles for which the team does not have enough players.
+  .wait(15000);
+  !fill_group_with_players(GroupName);
+  .wait({+formationStatus(ok)[artifact_id(GroupArtId)]}). // waits until the belief is added in the belief base
 
 /*
  * Task 1.5: Reacting to the addition of the belief formationStatus(ok)
@@ -65,6 +74,52 @@ sch_name("monitoring_scheme"). // the agent beliefs that it can manage schemes w
   .print("Group ", GroupName, " is well-formed.");
   addScheme(SchemeName)[artifact_id(GroupArtId)];
   focus(SchemeArtId).
+
+/*
+  * Task 2.2.1: Every 15 seconds the agent strives to create a well-formed group.
+  * Plan for reacting to the addition of the goal !fill_group_with_players(GroupName)
+  * Triggering event: addition of goal !fill_group_with_players(GroupName)
+  * Context: the agent beliefs that there exists a group G whose formation status is being tested
+  * Body: the agent checks if there are enough players for each role in the group G and tries to complete the group formation
+*/
+@fill_group_with_players_plan
++!fill_group_with_players(GroupName) : formationStatus(nok) & group(GroupName,GroupType,GroupArtId) & org_name(OrgName) & specification(group_specification(GroupName,RolesList,_,_)) <-
+  for ( .member(Role,RolesList) ) {
+    !check_enough_players(Role);
+  }
+  .wait(15000);
+  !fill_group_with_players(GroupArtId).
+
+/*
+  * Task 2.2.1: Default plan for reacting to the addition of the goal !fill_group_with_players(GroupName)
+  * Triggering event: addition of goal !fill_group_with_players(GroupName)
+  * Context: true (the plan is always applicable)
+  * Body: the agent does nothing
+*/
+@fill_group_with_players_plan_fail
++!fill_group_with_players(GroupName) : true <-
+  true.
+
+/*
+  * Task 2.2.1: If there are not enough players for a role, broadcast to ask for fulfilling the role
+  * Plan for reacting to the addition of the goal to check if there are enough players for a role
+  * Triggering event: addition of goal !check_enough_players(role(Role,_,_,MinCard,MaxCard,_,_))
+  * Context: the agent beliefs that there exists a group G whose formation status is being tested
+  * Body: the agent broadcasts to ask for fullfilling the role
+*/
+@check_enough_players_plan
++!check_enough_players(role(Role,_,_,MinCard,MaxCard,_,_)) : not enough_players(Role) & org_name(OrgName) & group_name(GroupName) <-
+  .print("Not enough players for role: ", Role);
+  .broadcast(tell, adopt_role(Role, GroupName, OrgName)).
+/*
+  * Task 2.2.1: Default plan to check if there are enough players for a role
+  * Triggering event: addition of goal !check_enough_players(role(Role,_,_,MinCard,MaxCard,_,_))
+  * Context: true (the plan is always applicable)
+  * Body: the agent does nothing
+*/
+@check_enough_players_plan_fail
++!check_enough_players(role(Role,_,_,MinCard,MaxCard,_,_)) : true <-
+  true.
 
 /* 
  * Plan for reacting to the addition of the goal !inspect(OrganizationalArtifactId)

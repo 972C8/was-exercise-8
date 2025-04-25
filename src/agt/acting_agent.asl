@@ -4,6 +4,19 @@
 // that describes a Thing of type https://ci.mines-stetienne.fr/kg/ontology#PhantomX
 robot_td("https://raw.githubusercontent.com/Interactions-HSG/example-tds/main/tds/leubot1.ttl").
 
+
+// Task 2.2.2
+// Using lecture slides and https://github.com/andreiciortea/was-lecture8-moise/blob/main/src/agt/simple_agent.asl
+role_goal(R, G) :-
+   role_mission(R, _, M) & mission_goal(M, G).
+
+can_achieve(G) :-
+   .relevant_plans({+!G[scheme(_)]}, LP) & LP \== [].
+
+i_have_plan_for_role(R) :-
+   not (role_goal(R, G) & not can_achieve(G)).
+
+
 /* Initial goals */
 !start. // the agent has the goal to start
 
@@ -16,6 +29,29 @@ robot_td("https://raw.githubusercontent.com/Interactions-HSG/example-tds/main/td
 @start_plan
 +!start : true <-
 	.print("Hello world").
+
+
+/*
+ * Task 2.2.2: Plan for reacting to the addition of the goal !adopt_role
+ * Triggering event: addition of goal !adopt_role
+ * Context: the agent believes that it has a plan for the role
+ * Body: the agent joins the organization workspace, looks up the artifacts focuses on them and adopts the role
+*/
+@adopt_role_plan
++adopt_role(Role, GroupName, OrgName) : i_have_plan_for_role(Role) <-
+	.print("I have a plan for the role: ", Role);
+	joinWorkspace(OrgName);
+	lookupArtifact(OrgName, OrgArtId);
+	focus(OrgArtId);
+	lookupArtifact(GroupName, GroupArtId);
+	focus(GroupArtId);
+	adoptRole(Role).
+
+// Task 2.2.2: Plan for reacting to the addition of the goal !adopt_role BUT the agent does not have a plan for the role
+@adopt_role_plan_fail
++adopt_role(Role, GroupName, OrgName) : not i_have_plan_for_role(Role) <-
+	.print("No plan for the role: ", Role).
+
 
 /* 
  * Plan for reacting to the addition of the goal !manifest_temperature

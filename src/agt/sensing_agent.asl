@@ -51,7 +51,7 @@ i_have_plan_for_role(R) :-
 @group_plan
 +group(GroupId, GroupType, GroupArtId) : true <-
 	focus(GroupArtId);
-	!scan_group_specification(GroupArtId).
+	!observe_specifications_of_group(GroupArtId).
 
 /*
  * Task 2.1.1: Observing properties and events that relate to the organization.
@@ -71,10 +71,10 @@ i_have_plan_for_role(R) :-
  * Context: the agent believes that a group is created
  * Body: scans the group specification and reasons on the organization and adoption of relevant roles
 */
-@scan_group_specification_plan
-+!scan_group_specification(GroupArtId) : specification(group_specification(GroupName,RolesList,_,_)) <-
+@observe_specifications_of_group_plan
++!observe_specifications_of_group(GroupArtId) : specification(group_specification(GroupName,RolesList,_,_)) <-
 	for ( .member(Role,RolesList) ) {
-    !reasoning_for_role_adoption(Role);
+    !reason_role_adoption(Role);
 	}.
 
 /*
@@ -83,8 +83,8 @@ i_have_plan_for_role(R) :-
  * Context: the agent believes that it has a plan for the role
  * Body: prints the role and adopts it
 */
-@reasoning_for_role_adoption_plan
-+!reasoning_for_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : i_have_plan_for_role(Role) <-
+@reason_role_adoption_plan
++!reason_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : i_have_plan_for_role(Role) <-
 	.print("I have a plan for the role: ", Role);
 	adoptRole(Role).
 
@@ -93,8 +93,8 @@ i_have_plan_for_role(R) :-
  * Triggering event: reasoning for role adoption
  * Context: the agent believes that it does not have a plan for the role
 */
-@reasoning_for_role_adoption_plan_fail
-+!reasoning_for_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : true <-
+@reason_role_adoption_plan_fail
++!reason_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : true <-
 	true.
 
 /* 
@@ -108,9 +108,9 @@ i_have_plan_for_role(R) :-
 	.print("I will read the temperature");
 	makeArtifact("weatherStation", "tools.WeatherStation", [], WeatherStationId); // creates a weather station artifact
 	focus(WeatherStationId); // focuses on the weather station artifact
-	readCurrentTemperature(47.42, 9.37, Celcius); // reads the current temperature using the artifact
-	.print("Temperature Reading (Celcius): ", Celcius);
-	.broadcast(tell, temperature(Celcius)). // broadcasts the temperature reading
+	readCurrentTemperature(47.42, 9.37, Celsius); // reads the current temperature using the artifact
+	.print("Temperature Reading (Celsius): ", Celsius);
+	.broadcast(tell, temperature(Celsius)). // broadcasts the temperature reading
 
 /* Import behavior of agents that work in CArtAgO environments */
 { include("$jacamoJar/templates/common-cartago.asl") }
