@@ -3,6 +3,18 @@
 
 /* Initial beliefs and rules */
 
+// Task 2.1.2
+// Using lecture slides and https://github.com/andreiciortea/was-lecture8-moise/blob/main/src/agt/simple_agent.asl
+role_goal(R, G) :-
+   role_mission(R, _, M) & mission_goal(M, G).
+
+can_achieve(G) :-
+   .relevant_plans({+!G[scheme(_)]}, LP) & LP \== [].
+
+i_have_plan_for_role(R) :-
+   not (role_goal(R, G) & not can_achieve(G)).
+
+
 /* Initial goals */
 !start. // the agent has the goal to start
 
@@ -15,6 +27,75 @@
 @start_plan
 +!start : true <-
 	.print("Hello world").
+
+/*
+ * Task 2.1.1: Joining the organization workspace
+ * Plan for reacting to the creation of new organization workspaces
+ * Triggering event: creation of a new organization workspace
+ * Context: the agent believes that an organization workspace is created
+ * Body: joins workspace, looks up artifacts and focuses
+*/
+@org_created_plan
++org_created(OrgName) : true <-
+	joinWorkspace(OrgName);
+	lookupArtifact(OrgName, OrgArtId);
+	focus(OrgArtId).
+
+/*
+ * Task 2.1.1: Observing properties and events that relate to the organization.
+ * Plan for reacting to the creation of new group
+ * Triggering event: creation of a new group
+ * Context: the agent believes that a group is created
+ * Body: looks up group, focuses on it and scans the group specification
+*/
+@group_plan
++group(GroupId, GroupType, GroupArtId) : true <-
+	focus(GroupArtId);
+	!scan_group_specification(GroupArtId).
+
+/*
+ * Task 2.1.1: Observing properties and events that relate to the organization.
+ * Plan for reacting to the creation of new scheme
+ * Triggering event: creation of a new scheme
+ * Context: the agent believes that a scheme is created
+ * Body: focuses on the scheme
+*/
+@scheme_plan
++scheme(SchemeId, SchemeType, SchemeArtId) : true <-
+	focus(SchemeArtId).
+
+/*
+ * Task 2.1.2: Reasons on the organization and adopts all its relevant roles
+ * Plan for scanning the group specification
+ * Triggering event: creation of a new group
+ * Context: the agent believes that a group is created
+ * Body: scans the group specification and reasons on the organization and adoption of relevant roles
+*/
+@scan_group_specification_plan
++!scan_group_specification(GroupArtId) : specification(group_specification(GroupName,RolesList,_,_)) <-
+	for ( .member(Role,RolesList) ) {
+    !reasoning_for_role_adoption(Role);
+	}.
+
+/*
+ * Task 2.1.2: Plan for reasoning on the role adoption
+ * Triggering event: reasoning for role adoption
+ * Context: the agent believes that it has a plan for the role
+ * Body: prints the role and adopts it
+*/
+@reasoning_for_role_adoption_plan
++!reasoning_for_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : i_have_plan_for_role(Role) <-
+	.print("I have a plan for the role: ", Role);
+	adoptRole(Role).
+
+/*
+ * Task 2.1.2: Plan for failure of reasoning on the role adoption
+ * Triggering event: reasoning for role adoption
+ * Context: the agent believes that it does not have a plan for the role
+*/
+@reasoning_for_role_adoption_plan_fail
++!reasoning_for_role_adoption(role(Role,_,_,MinCard,MaxCard,_,_)) : true <-
+	true.
 
 /* 
  * Plan for reacting to the addition of the goal !read_temperature

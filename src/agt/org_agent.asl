@@ -16,7 +16,31 @@ sch_name("monitoring_scheme"). // the agent beliefs that it can manage schemes w
 */
 @start_plan
 +!start : org_name(OrgName) & group_name(GroupName) & sch_name(SchemeName) <-
-  .print("Hello world").
+  .print("Hello world");
+
+  // Task 1.1: The agent creates and joins an organization workspace
+  createWorkspace(OrgName);
+  joinWorkspace(OrgName, WorkspaceId);
+
+  // Task 1.2: The agent creates and focuses on an Organization Board artifact
+  makeArtifact(OrgName, "ora4mas.nopl.OrgBoard", ["src/org/org-spec.xml"], OrgBoardArtId)[wid(WorkspaceId)];
+  focus(OrgBoardArtId)[wid(WorkspaceId)];
+
+  // Task 1.3: The agent uses the Organization Board artifact to create and focus on organizational artifacts
+  createGroup(GroupName, GroupName, GroupArtId)[artifact_id(OrgBoardArtId)];
+  focus(GroupArtId)[wid(WorkspaceId)];
+
+  createScheme(SchemeName, SchemeName, SchemeArtId)[artifact_id(OrgBoardArtId)];
+  focus(SchemeArtId)[wid(WorkspaceId)];
+
+  // Task 1.4: The agent broadcasts that a new organization workspace is available
+  .broadcast(tell, org_created(OrgName));
+  
+  !inspect(GroupArtId)[wid(WorkspaceId)];
+  !inspect(SchemeArtId)[wid(WorkspaceId)];
+
+  // Task 1.5: Add test goal for the formation status of the group, and wait for the group to become well-formed
+  ?formationStatus(ok)[artifact_id(GroupArtId)].
 
 /* 
  * Plan for reacting to the addition of the test-goal ?formationStatus(ok)
@@ -29,6 +53,18 @@ sch_name("monitoring_scheme"). // the agent beliefs that it can manage schemes w
 +?formationStatus(ok)[artifact_id(G)] : group(GroupName,_,G)[artifact_id(OrgName)] <-
   .print("Waiting for group ", GroupName," to become well-formed");
   .wait({+formationStatus(ok)[artifact_id(G)]}). // waits until the belief is added in the belief base
+
+/*
+ * Task 1.5: Reacting to the addition of the belief formationStatus(ok)
+ * Triggering event: addition of belief formationStatus(ok)[artifact_id(G)]
+ * Context: the agent beliefs that there exists a group G whose formation status is ok
+ * Body: the agent announces that the group is well-formed and can work on the scheme
+*/
+@formation_status_is_ok_plan
++formationStatus(ok)[artifact_id(GroupArtId)] : group(GroupName,_,GroupArtId)[artifact_id(OrgName)] & scheme(SchemeName,SchemeType,SchemeArtId) <-
+  .print("Group ", GroupName, " is well-formed.");
+  addScheme(SchemeName)[artifact_id(GroupArtId)];
+  focus(SchemeArtId).
 
 /* 
  * Plan for reacting to the addition of the goal !inspect(OrganizationalArtifactId)
